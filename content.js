@@ -1,76 +1,159 @@
 const stockContainer = document.createElement('div');
 stockContainer.id = 'floating-stock-ticker';
 
-chrome.storage.sync.get(['stocks', 'panelStyle'], function(result) {
+chrome.storage.sync.get(['stocks', 'panelStyle', 'tickerDismissed', 'cardDismissed'], function(result) {
   const stocks = result.stocks || ['HCAR', 'SYS', 'NETSOL', 'HUBC', 'AVN'];
-  const panelStyle = result.panelStyle || 'off'; // Default to 'off'
+  const panelStyle = result.panelStyle || 'off';
   
-  if (panelStyle !== 'off') {
+  // Only check specific dismissal state
+  const isDismissed = result[`${panelStyle}Dismissed`];
+  
+  if (panelStyle !== 'off' && !isDismissed) {
     document.body.appendChild(stockContainer);
     updateDisplay(stocks, panelStyle);
   }
 });
 
 function updateDisplay(stocks, style) {
-  stockContainer.className = `panel-${style}`;
-  stockContainer.innerHTML = '';
-  
-  if (style === 'ticker') {
-    document.body.classList.add('has-ticker');
-    
-    // Add hover effect handlers
-    stockContainer.addEventListener('mouseenter', () => {
-      stockContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-      stockContainer.style.opacity = '1';
-    });
-    
-    stockContainer.addEventListener('mouseleave', () => {
-      stockContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.75)';
-      stockContainer.style.opacity = '0.9';
-    });
-
-    stocks.forEach(stock => {
-      const stockSpan = document.createElement('span');
-      stockSpan.className = 'ticker-item';
-      stockSpan.innerHTML = `
-        <strong>${stock}</strong>
-        <span id="page-${stock}" class="price">Loading...</span>
-        <span class="separator">|</span>
-      `;
-      stockContainer.appendChild(stockSpan);
-    });
-  } else if (style === 'card') {
+  // First check if panel style is off
+  if (style === 'off') {
+    stockContainer.remove();
     document.body.classList.remove('has-ticker');
-    const title = document.createElement('div');
-    title.className = 'card-title';
-    title.textContent = 'PSX Stocks';
-    stockContainer.appendChild(title);
-
-    stocks.forEach(stock => {
-      const stockDiv = document.createElement('div');
-      stockDiv.className = 'card-item';
-      stockDiv.innerHTML = `
-        <strong>${stock}</strong>
-        <span id="page-${stock}" class="price">Loading...</span>
-      `;
-      stockContainer.appendChild(stockDiv);
-    });
+    return;
   }
+
+  // Check for market open reset and previous dismissal
+  chrome.storage.sync.get([`${style}Dismissed`, `${style}DismissedDate`], function(result) {
+    const dismissedDate = result[`${style}DismissedDate`];
+    const isDismissed = result[`${style}Dismissed`] && !isNewMarketSession(dismissedDate);
+    
+    if (isDismissed) {
+      stockContainer.remove();
+      document.body.classList.remove('has-ticker');
+      return;
+    }
+
+    stockContainer.className = `panel-${style}`;
+    stockContainer.innerHTML = '';
+    
+    // Add dismiss button
+    const dismissButton = document.createElement('button');
+    dismissButton.className = 'dismiss-button';
+    dismissButton.innerHTML = '×';
+    dismissButton.onclick = handleDismiss(style);
+    stockContainer.appendChild(dismissButton);
+
+    if (style === 'ticker') {
+      document.body.classList.add('has-ticker');
+      
+      // Create ticker content container
+      const tickerContent = document.createElement('div');
+      tickerContent.className = 'ticker-content';
+      
+      stocks.forEach(stock => {
+        const stockSpan = document.createElement('span');
+        stockSpan.className = 'ticker-item';
+        stockSpan.innerHTML = `
+          <strong>${stock}</strong>
+          <span id="page-${stock}" class="price">Loading...</span>
+          <span class="separator">|</span>
+        `;
+        tickerContent.appendChild(stockSpan);
+      });
+      
+      stockContainer.appendChild(tickerContent);
+      // Add dismiss button after ticker content
+      stockContainer.appendChild(dismissButton);
+    } else if (style === 'card') {
+      document.body.classList.remove('has-ticker');
+      const title = document.createElement('div');
+      title.className = 'card-title';
+      title.textContent = 'PSX Stocks';
+      stockContainer.appendChild(title);
+
+      stocks.forEach(stock => {
+        const stockDiv = document.createElement('div');
+        stockDiv.className = 'card-item';
+        stockDiv.innerHTML = `
+          <strong>${stock}</strong>
+          <span id="page-${stock}" class="price">Loading...</span>
+        `;
+        stockContainer.appendChild(stockDiv);
+      });
+    }
+      
+    // Get stored prices first, then fetch new ones
+    chrome.storage.sync.get(stocks, function(result) {
+      stocks.forEach(stock => {
+        const priceElement = document.getElementById(`page-${stock}`);
+        if (priceElement && result[stock]) {
+          priceElement.textContent = result[stock];
+        }
+      });
+    });
+      
+    if (isMarketHours()) {
+      fetchStockData(stocks);
+    }
+  });
+}
+
+// Simplify the market session check
+function isNewMarketSession(lastDismissedDate) {
+  if (!lastDismissedDate) return true;
   
-  // Get stored prices first, then fetch new ones
-  chrome.storage.sync.get(stocks, function(result) {
-    stocks.forEach(stock => {
-      const priceElement = document.getElementById(`page-${stock}`);
-      if (priceElement && result[stock]) {
-        priceElement.textContent = result[stock];
+  const now = new Date();
+  const lastDismissed = new Date(lastDismissedDate);
+  const marketOpen = new Date(now);
+  marketOpen.setHours(9, 30, 0, 0);
+  
+  // Reset if:
+  // 1. It's a new day and we're in market hours
+  // 2. We crossed 9:30 AM since last dismissal
+  return (now.toDateString() !== lastDismissed.toDateString() && isMarketHours()) ||
+         (lastDismissed < marketOpen && now >= marketOpen && isMarketHours());
+}
+
+// Update dismiss button handler
+function handleDismiss(style) {
+  return (e) => {
+    e.stopPropagation();
+    stockContainer.remove();
+    document.body.classList.remove('has-ticker');
+    chrome.storage.sync.set({ 
+      [`${style}Dismissed`]: true,
+      [`${style}DismissedDate`]: new Date().toISOString()
+    });
+  };
+}
+
+// Update the message listener to handle style changes
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'OPTIONS_UPDATED') {
+    chrome.storage.sync.get(['stocks', 'panelStyle'], function(result) {
+      const stocks = result.stocks || ['HCAR', 'SYS', 'NETSOL', 'HUBC', 'AVN'];
+      const panelStyle = result.panelStyle || 'off';
+      
+      // Always remove old panel first
+      stockContainer.remove();
+      document.body.classList.remove('has-ticker');
+      
+      if (panelStyle !== 'off') {
+        // Clear any existing dismissal states
+        chrome.storage.sync.set({
+          [`${panelStyle}Dismissed`]: false,
+          [`${panelStyle}DismissedDate`]: null
+        }, function() {
+          // Ensure container is added to body before updating display
+          if (!document.body.contains(stockContainer)) {
+            document.body.appendChild(stockContainer);
+          }
+          updateDisplay(stocks, panelStyle);
+        });
       }
     });
-  });
-  
-  if (isMarketHours()) {
-    fetchStockData(stocks);
   }
-}
+});
 
 function updateStocks(stocks, container) {
   container.innerHTML = '';
@@ -85,26 +168,6 @@ function updateStocks(stocks, container) {
   
   fetchStockData(stocks);
 }
-
-// Update the message listener to handle style changes
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'OPTIONS_UPDATED') {
-    chrome.storage.sync.get(['stocks', 'panelStyle'], function(result) {
-      const stocks = result.stocks || ['HCAR', 'SYS', 'NETSOL', 'HUBC', 'AVN'];
-      const panelStyle = result.panelStyle || 'off';
-      
-      if (panelStyle === 'off') {
-        stockContainer.remove();
-        document.body.classList.remove('has-ticker');
-      } else {
-        if (!stockContainer.isConnected) {
-          document.body.appendChild(stockContainer);
-        }
-        updateDisplay(stocks, panelStyle);
-      }
-    });
-  }
-});
 
 function fetchStockData(stocks) {
   stocks.forEach(stock => {

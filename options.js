@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
   loadOptions();
   document.getElementById('save-button').addEventListener('click', saveOptions);
   document.getElementById('stocks').addEventListener('input', updateStockToggles);
+  document.getElementById('reset-dismissal').addEventListener('click', resetDismissalStates);
 });
 
 function loadOptions() {
@@ -36,24 +37,41 @@ function saveOptions() {
   const stocks = stocksInput.split(',').map(s => s.trim()).filter(Boolean);
   const showBadge = document.getElementById('showBadge').value;
   const panelStyle = document.getElementById('panelStyle').value;
-
-  // Get current checkbox states before updating
   const enabledStocks = stocks.filter(stock => {
     const checkbox = document.getElementById(`toggle-${stock}`);
-    // If checkbox exists, use its state, otherwise it's a new stock
     return checkbox ? checkbox.checked : false;
   });
 
-  // Save immediately without recreating checkboxes
+  // Always reset dismissal state when saving options
   chrome.storage.sync.set({ 
     stocks,
     showBadge,
     enabledStocks,
-    panelStyle
+    panelStyle,
+    [`${panelStyle}Dismissed`]: false,
+    [`${panelStyle}DismissedDate`]: null
   }, function() {
-    // Update checkboxes after saving
     updateStockToggles(enabledStocks);
     chrome.runtime.sendMessage({ type: 'OPTIONS_UPDATED' });
-    alert('Options saved!');
+    alert('Options saved! Panel display has been reset.');
+  });
+}
+
+function resetDismissalStates() {
+  chrome.storage.sync.get(['panelStyle'], function(result) {
+    // Only reset if not set to 'off'
+    if (result.panelStyle !== 'off') {
+      chrome.storage.sync.set({
+        tickerDismissed: false,
+        cardDismissed: false,
+        tickerDismissedDate: null,
+        cardDismissedDate: null
+      }, function() {
+        chrome.runtime.sendMessage({ type: 'OPTIONS_UPDATED' });
+        alert('Panel dismissal states have been reset!');
+      });
+    } else {
+      alert('Cannot reset panels while display is set to Off.');
+    }
   });
 }
