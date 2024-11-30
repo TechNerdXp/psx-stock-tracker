@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PSX Stock Tracker</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="styles.css">
+</head>
+<body class="bg-gray-100 p-4" style="width: 382px; height: 236px;">
+  <div id="stock-ticker" class="bg-white p-6 rounded-lg shadow-lg relative">
+    <h1 class="text-2xl font-bold text-blue-600 mb-4">PSX Stock Tracker</h1>
+    <div id="stocks" class="space-y-2"></div>
+    <button id="options-button" class="absolute top-4 right-4">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+      </svg>
+    </button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

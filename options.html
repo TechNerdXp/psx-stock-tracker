@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PSX Stock Tracker Options</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-4">
+  <div class="bg-white p-6 rounded-lg shadow-lg max-w-md mx-auto">
+    <h1 class="text-2xl font-bold text-blue-600 mb-4">Options</h1>
+    <div class="mb-4">
+      <label class="block text-gray-700 text-sm font-bold mb-2" for="stocks">
+        Stock Symbols (comma separated)
+      </label>
+      <input id="stocks" type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="HCAR, SYS, NETSOL, HUBC, AVN">
+    </div>
+    <div class="mb-4">
+      <label class="block text-gray-700 text-sm font-bold mb-2">
+        Badge Display Settings
+      </label>
+      <div id="stockToggles" class="space-y-2 mt-2 border rounded p-3 bg-gray-50">
+        <!-- Stock toggles will be inserted here -->
+      </div>
+    </div>
+    <div class="mb-4">
+      <label class="block text-gray-700 text-sm font-bold mb-2" for="showBadge">
+        Show Badge
+      </label>
+      <select id="showBadge" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        <option value="always">Always</option>
+        <option value="marketHours">During Market Hours</option>
+      </select>
+    </div>
+    <div class="mb-4">
+      <label class="block text-gray-700 text-sm font-bold mb-2" for="panelStyle">
+        Page Display Style
+      </label>
+      <select id="panelStyle" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        <option value="off">Off</option>
+        <option value="card">Floating Card</option>
+        <option value="ticker">Top Scrolling Ticker</option>
+      </select>
+    </div>
+    <button id="save-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full">
+      Save
+    </button>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
