@@ -122,7 +122,8 @@ function startBadgeRotation() {
         const stockText = currentStocks[index];
         chrome.action.setBadgeText({ text: priceText });
         chrome.action.setTitle({ title: stockText }); // Show stock name on hover
-        chrome.action.setBadgeBackgroundColor({ color: '#00FF00' });
+        chrome.action.setBadgeBackgroundColor({ color: '#006400' }); // Darker green color
+        chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
         index = (index + 1) % currentPrices.length;
       } else if (showBadge !== 'always' && !isMarketHours()) {
         chrome.action.setBadgeText({ text: '' });
